@@ -1,21 +1,47 @@
-name: Hello, World!
-description: Greet someone and record the time
-author: GitHub Actions
+name: HashiCorp envconsul Action
+description: Fetch env variables using the official HashiCorp envconsul tool
+author: Md Minhazul Haque
 
-# Define your inputs here.
 inputs:
-  who-to-greet:
-    description: Who to greet
+  vault-addr:
+    description: Vault Address
     required: true
-    default: World
 
-# Define your outputs here.
-outputs:
-  time:
-    description: The time we greeted you
+  vault-token:
+    description: Vault Token
+    required: true
+
+  vault-secret:
+    description: Vault Secret
+    required: true
+
+  env-file:
+    description: Env File
+    required: true
 
 runs:
-  using: docker
-  image: Dockerfile
-  env:
-    INPUT_WHO_TO_GREET: ${{ inputs.who-to-greet }}
+  using: composite
+  steps:
+    - name: Install envconsul
+      shell: bash
+      run: |
+        ENVCONSUL_VERSION=0.13.2
+        wget https://releases.hashicorp.com/envconsul/${ENVCONSUL_VERSION}/envconsul_${ENVCONSUL_VERSION}_linux_amd64.zip
+        unzip envconsul_${ENVCONSUL_VERSION}_linux_amd64.zip -d /usr/local/bin/
+        rm -f envconsul_${ENVCONSUL_VERSION}_linux_amd64.zip
+        chmod 0755 /usr/local/bin/envconsul
+    - name: Fetch secret
+      shell: bash
+      run: |
+        envconsul \
+          -vault-addr ${{ inputs.vault-addr }} \
+          -vault-token ${{ inputs.vault-token }} \
+          -secret ${{ inputs.vault-secret }} \
+          -vault-unwrap-token=false \
+          -vault-renew-token=false \
+          -vault-ssl=true \
+          -vault-ssl-verify=true \
+          -no-prefix \
+          -pristine \
+          -once \
+          env > ${{ inputs.env-file }}
